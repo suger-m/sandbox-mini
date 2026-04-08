@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { shouldUseSandbox } from '../src/shouldUseSandbox'
 import type { LoadedSandboxConfig } from '../src/types'
 
+// 共享一份最小基准配置，方便每个测试只关注自己要验证的分支。
 const baseConfig: LoadedSandboxConfig = {
   configDir: '/tmp/sandbox-mini/examples',
   configPath: '/tmp/sandbox-mini/examples/sandbox.config.json',
@@ -18,6 +19,7 @@ const baseConfig: LoadedSandboxConfig = {
 
 describe('shouldUseSandbox', () => {
   it('sandboxes commands when enabled', () => {
+    // 默认路径：只要没命中任何绕过条件，就应该进入沙箱。
     const decision = shouldUseSandbox({
       commandArgs: ['touch', './examples/workspace/file.txt'],
       config: baseConfig,
@@ -29,6 +31,7 @@ describe('shouldUseSandbox', () => {
   })
 
   it('skips sandbox for excluded commands', () => {
+    // excludedCommands 的优先级要高于默认进沙箱。
     const decision = shouldUseSandbox({
       commandArgs: ['echo', 'hello'],
       config: {
@@ -44,6 +47,7 @@ describe('shouldUseSandbox', () => {
   })
 
   it('honors explicit sandbox bypass when allowed', () => {
+    // 当策略允许时，显式绕过标记应该把命令留在沙箱外执行。
     const decision = shouldUseSandbox({
       commandArgs: ['sh', '-lc', 'echo hi > /tmp/out'],
       config: baseConfig,
@@ -55,6 +59,7 @@ describe('shouldUseSandbox', () => {
   })
 
   it('ignores explicit bypass when policy disallows it', () => {
+    // 如果配置禁用了无沙箱命令，显式绕过也必须失效。
     const decision = shouldUseSandbox({
       commandArgs: ['sh', '-lc', 'echo hi > /tmp/out'],
       config: {
@@ -69,6 +74,7 @@ describe('shouldUseSandbox', () => {
   })
 
   it('skips sandbox when globally disabled', () => {
+    // 全局关闭开关是最外层短路条件。
     const decision = shouldUseSandbox({
       commandArgs: ['touch', './examples/workspace/file.txt'],
       config: {

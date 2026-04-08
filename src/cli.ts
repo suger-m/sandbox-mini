@@ -7,6 +7,7 @@ import { runCommand } from './exec'
 import { shouldUseSandbox } from './shouldUseSandbox'
 import type { CliOptions } from './types'
 
+// 帮助信息同时充当最小使用手册，README 里的示例也和这里保持一致。
 function printUsage(): void {
   console.error(`Usage:
   bun run src/cli.ts -- --config <path> [--dangerously-disable-sandbox] [--verbose] -- <command> [args...]
@@ -19,6 +20,7 @@ Examples:
 }
 
 function parseCliArgs(argv: string[]): CliOptions {
+  // CLI 只解析自己的控制参数；真正的目标命令统一放在 `--` 之后透传。
   let configPath = ''
   let dangerouslyDisableSandbox = false
   let verbose = false
@@ -56,6 +58,7 @@ function parseCliArgs(argv: string[]): CliOptions {
     throw new Error(`unknown argument: ${token}`)
   }
 
+  // `--config` 和命令本体都是必填项，这样可以避免“默认行为”带来的误解。
   if (!configPath) {
     throw new Error('--config is required')
   }
@@ -77,6 +80,7 @@ function parseCliArgs(argv: string[]): CliOptions {
   }
 }
 
+// 统一把关键决策摘要打印到 stderr，stdout 保留给子命令真实输出。
 function printSummary(summary: {
   configPath: string
   useSandbox: boolean
@@ -101,6 +105,7 @@ function printSummary(summary: {
 
 async function main(): Promise<void> {
   try {
+    // 先做解析和决策，再决定是直接执行命令还是先包一层 bwrap。
     const options = parseCliArgs(process.argv.slice(2))
     const config = await loadConfig(options.configPath)
     const decision = shouldUseSandbox({
@@ -113,6 +118,7 @@ async function main(): Promise<void> {
     let executableArgs = options.commandArgs.slice(1)
 
     if (decision.useSandbox) {
+      // 真正进入沙箱前，先明确检查平台和 bwrap 是否可用，避免隐式失败。
       assertLinuxLikePlatform()
       assertBubblewrapAvailable()
       executable = 'bwrap'
@@ -133,6 +139,7 @@ async function main(): Promise<void> {
         : undefined,
     })
 
+    // 子进程执行结果会被原样透传，只在外层补一层摘要和退出码信息。
     const result = await runCommand({
       command: executable,
       args: executableArgs,
@@ -153,6 +160,7 @@ async function main(): Promise<void> {
       console.error(`[sandbox-mini] signal: ${result.signal}`)
     }
 
+    // 让调用者拿到真实退出码，便于在脚本或 CI 里继续使用。
     process.exit(result.exitCode)
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
