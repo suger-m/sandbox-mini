@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "allowUnsandboxedCommands": true,
+  "excludedCommands": ["echo *"],
+  "filesystem": {
+    "allowWrite": ["./workspace"]
+  },
+  "network": {
+    "enabled": false
+  }
+}
